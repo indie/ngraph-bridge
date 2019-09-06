@@ -144,6 +144,10 @@ class Builder {
                 const ngraph::element::Type>>&
   TF_NGRAPH_CONST_MAP();
 
+  template <class TOpType, class... TArg>
+  static std::shared_ptr<TOpType> ConstructNgNode(const std::string& op_name,
+                                         TArg&&... Args)
+
  private:
   static void ComputeScaleOffsetFolded(const uint& num_bits,
                                        const bool& unsigned_type,

@@ -29,6 +29,7 @@
 #include "ngraph/op/util/logical_reduction.hpp"
 
 #include "logging/ngraph_log.h"
+#include "ngraph_bridge/ngraph_api.h"
 #include "ngraph_bridge/ngraph_backend_manager.h"
 #include "ngraph_bridge/ngraph_builder.h"
 #include "ngraph_bridge/ngraph_conversions.h"
@@ -92,9 +93,12 @@ static void SaveNgOp(Builder::OpMap& ng_op_map, const std::string& op_name,
 }
 
 template <class TOpType, class... TArg>
-std::shared_ptr<TOpType> ConstructNgNode(const std::string& op_name,
+static std::shared_ptr<TOpType> Builder::ConstructNgNode(const std::string& op_name,
                                          TArg&&... Args) {
   auto ng_node = std::make_shared<TOpType>(std::forward<TArg>(Args)...);
+  if (config::IsLoggingPlacement()) {
+    cout << "TF_to_NG_node: " << op_name << " " << ng_node->get_name() << "\n";
+  }
   ng_node->set_friendly_name(op_name);
   ng_node->add_provenance_tag(op_name);
   return ng_node;
@@ -393,7 +397,7 @@ static Status TranslateUnaryOp(
     Builder::OpMap& ng_op_map) {
   return TranslateUnaryOp(op, static_input_map, ng_op_map,
                           [&op](std::shared_ptr<ng::Node> n) {
-                            return ConstructNgNode<T>(op->name(), n);
+                            return Builder::ConstructNgNode<T>(op->name(), n);
                           });
 }
 
@@ -455,7 +459,7 @@ static Status TranslateBinaryOp(
   return TranslateBinaryOp(
       op, static_input_map, ng_op_map, [&op](std::shared_ptr<ng::Node> ng_lhs,
                                              std::shared_ptr<ng::Node> ng_rhs) {
-        return ConstructNgNode<T>(op->name(), ng_lhs, ng_rhs);
+        return Builder::ConstructNgNode<T>(op->name(), ng_lhs, ng_rhs);
       });
 }
 
@@ -547,7 +551,7 @@ static Status TranslateAddNOp(
       std::accumulate(std::next(ng_arg_vec.begin()), ng_arg_vec.end(),
                       ng_arg_vec.at(0),
                       [&op](shared_ptr<ng::Node> a, shared_ptr<ng::Node> b) {
-                        return ConstructNgNode<ng::op::Add>(op->name(), a, b);
+                        return Builder::ConstructNgNode<ng::op::Add>(op->name(), a, b);
                       }));  // accumulation: start with
                             // first element. default op is
                             // addition
